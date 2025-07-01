@@ -98,6 +98,7 @@ const DetectionResults = ({ finalOcrResults, onReset }) => {
       )}
 
       {/* Detection Summary */}
+      
       <div className="mb-6 p-3 sm:p-4 bg-blue-50 border text-black border-blue-200 rounded-lg">
         <h3 className="text-base sm:text-lg font-semibold mb-3 text-blue-700">
           Detection Summary

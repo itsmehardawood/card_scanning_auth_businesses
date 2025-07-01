@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: '/securityscan',
+  basePath: '/lollicash',
 }
 
 export default nextConfig;

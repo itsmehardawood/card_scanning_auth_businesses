@@ -13,7 +13,7 @@ export const sendFrameToAPI = async (frame, phase, sessionId, frameNumber) => {
       
       console.log(`Sending frame ${frameNumber} for ${phase} phase to API (attempt ${attempt})...`);
       
-      const response = await fetch('https://cardapp.hopto.org/detect', {
+      const response = await fetch('https://ca38-110-39-39-254.ngrok-free.app/detect', {
         method: 'POST',
         body: formData,
         headers: {
