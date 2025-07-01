@@ -72,9 +72,8 @@ const ControlPanel = ({
         <div className="text-center">
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
             <h3 className="text-lg font-semibold text-red-800 mb-2">Oops! Currently, you have reached the maximum number of times you can scan. </h3>
-            <p className="text-red-700 mb-3 font-bold">Contact customer support for assistance </p>
-            <p className='text-red-700  '>or</p>
-            <p className="text-red-700 mb-3"> retry the scanning process.</p>
+            <p className="text-red-700 mb-3 font-bold">Contact customer support for assistance or retry the scanning process. </p>
+     
           </div>
         </div>
       </div>
