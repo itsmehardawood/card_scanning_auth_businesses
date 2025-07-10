@@ -12,13 +12,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Card Detector",
-  description: "Created by Dawood",
+  title: "CardNest LLC - Scan, Detect, Analyze, Prevent",
+
+   icons: {
+    // icon: '/favicon.ico', // path from the public folder
+  },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/images/favicon.jpg" type="image/jpg" />
+        {/* Or use: <link rel="icon" href="/favicon.ico" /> */}
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -27,3 +34,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+
