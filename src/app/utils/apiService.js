@@ -13,13 +13,27 @@ export const sendFrameToAPI = async (frame, phase, sessionId, frameNumber) => {
       
       console.log(`Sending frame ${frameNumber} for ${phase} phase to API (attempt ${attempt})...`);
       
-      const response = await fetch('https://cardapp.hopto.org/detect', {
+      // const response = await fetch('https://cardapp.hopto.org/detect', {
+      //   method: 'POST',
+      //   body: formData,
+      //   headers: {
+      //     'ngrok-skip-browser-warning': 'true'
+      //   }
+      // });
+
+
+         const response = await fetch('https://0d8bb38a6429.ngrok-free.app/detect', {
         method: 'POST',
         body: formData,
         headers: {
           'ngrok-skip-browser-warning': 'true'
         }
       });
+
+
+
+
+
       
       if (!response.ok) {
         const errorText = await response.text();

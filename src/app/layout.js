@@ -15,7 +15,6 @@ export const metadata = {
   title: "CardNest LLC - Scan, Detect, Analyze, Prevent",
 
    icons: {
-    // icon: '/favicon.ico', // path from the public folder
   },
 };
 

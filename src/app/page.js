@@ -548,19 +548,50 @@ const CardDetectionApp = () => {
   };
 
   // FIXED: "Try Again" function - keeps attempt count but resets to appropriate phase
-  const handleTryAgain = () => {
-    console.log(`🔄 Trying again for operation: ${currentOperation}. Attempt count remains: ${attemptCount}`);
-    
-    stopRequestedRef.current = true;
-    clearDetectionTimeout();
-    
-    // FIXED: Don't reset attempt count here - keep it for tracking
-    setDetectionActive(false);
-    setIsProcessing(false);
-    setCountdown(0);
-    setErrorMessage('');
-    
-    // Return to the appropriate phase based on what operation failed
+
+
+const handleTryAgain = () => {
+  console.log(`🔄 Trying again for operation: ${currentOperation}. Attempt count remains: ${attemptCount}`);
+  
+  // Keep stop flag as true to prevent auto-starting
+  stopRequestedRef.current = true;
+  clearDetectionTimeout();
+  
+  // Clean up intervals FIRST
+  if (captureIntervalRef.current) {
+    clearInterval(captureIntervalRef.current);
+    captureIntervalRef.current = null;
+  }
+  if (countdownIntervalRef.current) {
+    clearInterval(countdownIntervalRef.current);
+    countdownIntervalRef.current = null;
+  }
+  if (validationIntervalRef.current) {
+    clearInterval(validationIntervalRef.current);
+    validationIntervalRef.current = null;
+  }
+  
+  // Reset states
+  setDetectionActive(false);
+  setIsProcessing(false);
+  setCountdown(0);
+  setErrorMessage('');
+  
+  // Check if we need to restart from front scan
+  if (currentOperation === 'back' && 
+      (errorMessage.includes('start the scanning process from front side again') ||
+       errorMessage.includes('need to restart from front scan'))) {
+    // Restart from front scan
+    setCurrentPhase('ready-for-front');
+    setCurrentOperation('front');
+    setFrontScanState({
+      framesBuffered: 0,
+      chipDetected: false,
+      bankLogoDetected: false,
+      canProceedToBack: false
+    });
+  } else {
+    // Normal retry logic
     if (currentOperation === 'validation') {
       setCurrentPhase('idle');
       setValidationState({
@@ -580,23 +611,13 @@ const CardDetectionApp = () => {
     } else if (currentOperation === 'back') {
       setCurrentPhase('ready-for-back');
     } else {
-      // Default fallback
       setCurrentPhase('idle');
     }
-    
-    // Clean up intervals
-    if (captureIntervalRef.current) {
-      clearInterval(captureIntervalRef.current);
-    }
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-    }
-    if (validationIntervalRef.current) {
-      clearInterval(validationIntervalRef.current);
-    }
-    
-    stopRequestedRef.current = false;
-  };
+  }
+  
+  // DON'T reset stopRequestedRef here - let the button handlers do it
+  // The user must manually click a button to start scanning again
+};
 
   // FIXED: Start over function
   const handleStartOver = () => {
