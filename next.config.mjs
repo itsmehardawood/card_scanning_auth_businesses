@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  basePath: '/lollicash',
+  // Remove basePath to serve app at root
 }
 
 export default nextConfig;
