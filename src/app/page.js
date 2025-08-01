@@ -16,6 +16,16 @@ const MAX_ATTEMPTS = 3;
 const DETECTION_TIMEOUT = 40000; // 40 seconds
 
 const CardDetectionApp = () => {
+
+    // Merchant info state
+  const [merchantInfo, setMerchantInfo] = useState({
+    display_name: '',
+    display_logo: '',
+    merchant_id: '',
+    loading: true,
+    error: null
+  });
+
   // Existing state management
   const [currentPhase, setCurrentPhase] = useState('idle');
   const [detectionActive, setDetectionActive] = useState(false);
@@ -25,6 +35,66 @@ const CardDetectionApp = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [sessionId, setSessionId] = useState('');
      const lockedRef = useRef(false); // 👈 add this
+
+
+    useEffect(() => {
+  const fetchMerchantInfo = async () => {
+    // Use manual scanId if scanId from URL is not available
+    const currentScanId =  'a7b3c07c-a24d-43f9-bfc6-6453f654afa9';
+    
+    if (!currentScanId) {
+      setMerchantInfo(prev => ({
+        ...prev,
+        loading: false,
+        error: 'Scan ID not found in URL'
+      }));
+      return;
+    }
+
+    try {
+      console.log('🔍 Fetching merchant info for scanId:', currentScanId);
+      setMerchantInfo(prev => ({ ...prev, loading: true, error: null }));
+
+      const response = await fetch(`https://admin.cardnest.io/api/getmerchantscanInfo?scanId=${currentScanId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+
+      console.log('📡 API Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('📊 Merchant info response:', result);
+
+      if (result.status === true && result.data) {
+        setMerchantInfo({
+          display_name: result.data.display_name || '',
+          display_logo: result.data.display_logo || '',
+          merchant_id: result.data.merchant_id || '',
+          loading: false,
+          error: null
+        });
+        console.log('✅ Merchant info loaded successfully');
+      } else {
+        throw new Error(result.message || 'Failed to fetch merchant information');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching merchant info:', error);
+      setMerchantInfo(prev => ({
+        ...prev,
+        loading: false,
+        error: error.message || 'Failed to load merchant information'
+      }));
+    }
+  };
+
+  fetchMerchantInfo();
+}, []);
 
   
   // Attempt tracking state - FIXED: Better state management
@@ -657,9 +727,33 @@ const handleTryAgain = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-700 to-black p-4 sm:p-4">
       <div className="container mx-auto max-w-4xl">
-        <h1 className="text-xl bg-white p-2 sm:text-2xl lg:text-3xl  rounded-md font-bold text-center mb-4 sm:mb-8 text-gray-900">
-          Card Security Scan
-        </h1>
+
+        <div className="text-center mb-4 sm:mb-8">
+  {/* Merchant Info Section - Only show if data is available and not loading */}
+  {!merchantInfo.loading && !merchantInfo.error && merchantInfo.display_name && (
+    <div className="flex flex-col bg-white sm:flex-row items-center justify-center gap-2 py-2 sm:gap-4 mb-3 sm:mb-4">
+      {/* Display Logo */}
+      {merchantInfo.display_logo && (
+        <img 
+          src={merchantInfo.display_logo} 
+          alt={merchantInfo.display_name}
+          className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 object-contain rounded-md"
+        />
+      )}
+      
+      {/* Display Name */}
+      <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-black">
+        {merchantInfo.display_name}
+      </h2>
+    </div>
+  )}
+  
+  {/* Main Title */}
+  <h1 className="text-xl bg-white p-2 sm:text-2xl lg:text-3xl rounded-md font-bold text-gray-900">
+    Card Security Scan
+  </h1>
+</div>
+
 
         <CameraView
           videoRef={videoRef}

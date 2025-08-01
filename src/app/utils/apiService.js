@@ -13,21 +13,21 @@ export const sendFrameToAPI = async (frame, phase, sessionId, frameNumber) => {
       
       console.log(`Sending frame ${frameNumber} for ${phase} phase to API (attempt ${attempt})...`);
       
-      // const response = await fetch('https://api.cardnest.io/detect', {
-      //   method: 'POST',
-      //   body: formData,
-      //   headers: {
-      //     'ngrok-skip-browser-warning': 'true'
-      //   }
-      // });
-      
-         const response = await fetch('https://8fea0c98605e.ngrok-free.app/detect', {
+      const response = await fetch('https://api.cardnest.io/detect', {
         method: 'POST',
         body: formData,
         headers: {
           'ngrok-skip-browser-warning': 'true'
         }
       });
+      
+      //    const response = await fetch('https://8fea0c98605e.ngrok-free.app/detect', {
+      //   method: 'POST',
+      //   body: formData,
+      //   headers: {
+      //     'ngrok-skip-browser-warning': 'true'
+      //   }
+      // });
 
 
       
