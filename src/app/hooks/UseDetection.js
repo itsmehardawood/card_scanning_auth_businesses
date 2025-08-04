@@ -834,7 +834,7 @@ export const useDetection = (
             reject(new Error('Timeout: No successful API responses received'));
           }
         }
-      }, 120000);
+      }, 50000);
     });
   };
 
