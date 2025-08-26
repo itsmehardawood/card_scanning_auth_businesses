@@ -82,9 +82,9 @@ const CameraView = ({
 
   const commonStyle = {
     ...arrowStyle,
-    fill: 'rgba(0, 0, 0, 0.15)',     // black fill @ 15%
-    stroke: 'rgba(0, 0, 0, 0.9)',    // black stroke @ 90%
-    color: '#000000',               // black
+    fill: '#163832',     // inside of the arrow color
+    stroke: '#720000',   // border color around the arrow
+    color: '#720000',    // border color for icon
   };
 
   return (
