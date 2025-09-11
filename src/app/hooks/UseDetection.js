@@ -68,6 +68,17 @@ export const useDetection = (
               lastApiResponse = apiResponse;
               setIsProcessing(false);
 
+              // ⚠️ PRIORITY CHECK: Fake card detection - check first before anything else
+              if (apiResponse.fake_card === true) {
+                isComplete = true;
+                cleanup();
+                console.log("❌ Fake card detected - failing detection immediately");
+                setErrorMessage("Fake card detected. Please use original card.");
+                setCurrentPhase("error");
+                reject(new Error("Fake card detected"));
+                return;
+              }
+
               const bufferedFrames =
                 apiResponse.buffer_info?.front_frames_buffered || 0;
               const chipDetected = apiResponse.chip || false;
@@ -117,6 +128,15 @@ export const useDetection = (
                 );
 
                 if (lastApiResponse) {
+                  // ⚠️ PRIORITY CHECK: Check fake card detection even when max frames reached
+                  if (lastApiResponse.fake_card === true) {
+                    console.log("❌ Max frames: Fake card detected");
+                    setErrorMessage("Fake card detected. Please use original card.");
+                    setCurrentPhase("error");
+                    reject(new Error("Max frames: Fake card detected"));
+                    return;
+                  }
+                  
                   const buffered =
                     lastApiResponse.buffer_info?.front_frames_buffered || 0;
                   const chip = lastApiResponse.chip || false;
@@ -188,6 +208,16 @@ export const useDetection = (
           cleanup();
           if (lastApiResponse) {
             console.log("Timeout reached, checking conditions...");
+            
+            // ⚠️ PRIORITY CHECK: Check fake card detection even on timeout
+            if (lastApiResponse.fake_card === true) {
+              console.log("❌ Timeout: Fake card detected");
+              setErrorMessage("Fake card detected. Please use original card.");
+              setCurrentPhase("error");
+              reject(new Error("Timeout: Fake card detected"));
+              return;
+            }
+            
             const bufferedFrames =
               lastApiResponse.buffer_info?.front_frames_buffered || 0;
             const chipDetected = lastApiResponse.chip || false;
@@ -215,7 +245,8 @@ export const useDetection = (
               } else if (!chipDetected) {
                 setErrorMessage(
                   "Timeout: Chip not detected. Please ensure the chip is visible."
-                );
+                );  
+                
               } else if (!bankLogoDetected) {
                 setErrorMessage(
                   "Timeout: Bank logo not detected. Please ensure the logo is visible."
@@ -532,3 +563,6 @@ export const useDetection = (
     captureIntervalRef,
   };
 };
+
+
+

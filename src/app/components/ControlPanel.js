@@ -42,7 +42,7 @@ const ControlPanel = ({
               Security Scan Detection Failed.
             </h3>
             <p className="text-red-700 mb-3">
-              Please ensure the card is in a clear view.
+              {errorMessage || "Please ensure the card is in a clear view."}
             </p>
 
             {attemptCount < maxAttempts && (
