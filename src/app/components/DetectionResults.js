@@ -2,7 +2,12 @@ import React from "react";
 import JsonResponseViewer from "./JsonFormate";
 
 const DetectionResults = ({ finalOcrResults, onReset }) => {
-  if (!finalOcrResults) return null;
+  console.log("🔍 DetectionResults received data:", finalOcrResults);
+  
+  if (!finalOcrResults) {
+    console.log("❌ No finalOcrResults provided");
+    return null;
+  }
 
   const {
     final_ocr,
@@ -16,6 +21,8 @@ const DetectionResults = ({ finalOcrResults, onReset }) => {
     hologram,
     symmetry,
   } = finalOcrResults;
+
+  console.log("🔍 Extracted final_ocr:", final_ocr);
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-1 sm:p-6 max-w-4xl mx-auto">
@@ -153,12 +160,12 @@ const DetectionResults = ({ finalOcrResults, onReset }) => {
               <span>Customer Service:</span>
               <span
                 className={
-                  final_ocr.customer_service.detected
+                  final_ocr?.customer_service?.detected
                     ? "text-green-600"
                     : "text-red-600"
                 }
               >
-                {final_ocr.customer_service.detected
+                {final_ocr?.customer_service?.detected
                   ? "Detected"
                   : "Not Detected"}
               </span>

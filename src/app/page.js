@@ -163,6 +163,7 @@ const CardDetectionApp = () => {
   const validationIntervalRef = useRef(null);
   const stopRequestedRef = useRef(false);
   const detectionTimeoutRef = useRef(null);
+  const currentSessionIdRef = useRef(null); // Store current session ID for immediate access
 
   // Helper function to clear detection timeout
   const clearDetectionTimeout = () => {
@@ -375,8 +376,14 @@ const CardDetectionApp = () => {
       validationComplete: false,
     });
 
-    const currentSessionId = `session_${Date.now()}`;
-    setSessionId(currentSessionId);
+    // Create/get session ID and store in ref
+    let currentSessionId = sessionId || currentSessionIdRef.current;
+    if (!currentSessionId) {
+      currentSessionId = `session_${Date.now()}`;
+      currentSessionIdRef.current = currentSessionId;
+      setSessionId(currentSessionId);
+      console.log("New session ID created:", currentSessionId);
+    }
 
     let frameNumber = 0;
     let validationComplete = false;
@@ -546,6 +553,15 @@ const CardDetectionApp = () => {
       return;
     }
 
+    // Create/get session ID at the start and store in ref for immediate access
+    let currentSessionId = sessionId || currentSessionIdRef.current;
+    if (!currentSessionId) {
+      currentSessionId = `session_${Date.now()}`;
+      currentSessionIdRef.current = currentSessionId;
+      setSessionId(currentSessionId);
+      console.log("New session ID created:", currentSessionId);
+    }
+
     console.log("🔍 Starting front side detection...");
     setFrontScanState({
       framesBuffered: 0,
@@ -571,7 +587,7 @@ const CardDetectionApp = () => {
       startDetectionTimeout("Front side");
 
       try {
-        await captureAndSendFramesFront("front");
+        await captureAndSendFramesFront("front", currentSessionId);
 
         if (!stopRequestedRef.current) {
           clearDetectionTimeout();
@@ -619,7 +635,9 @@ const CardDetectionApp = () => {
 
       // Inside your try block
       try {
-        const finalResult = await captureAndSendFrames("back");
+        const finalResult = await captureAndSendFrames("back", currentSessionIdRef.current);
+
+        console.log("📊 Final API Result:", finalResult);
 
         if (!stopRequestedRef.current && !lockedRef.current) {
           clearDetectionTimeout();
@@ -627,12 +645,15 @@ const CardDetectionApp = () => {
 
           if (finalResult.encrypted_card_data && finalResult.status) {
             lockedRef.current = true; // ✅ lock success state
+            console.log("✅ Setting encrypted card data result");
             setFinalOcrResults(finalResult);
             setCurrentPhase("final_response");
           } else if (finalResult.final_ocr) {
+            console.log("✅ Setting final_ocr result:", finalResult.final_ocr);
             setFinalOcrResults(finalResult);
             setCurrentPhase("results");
           } else {
+            console.log("✅ Setting fallback result:", finalResult);
             setFinalOcrResults(finalResult);
             setCurrentPhase("results");
           }
@@ -665,6 +686,7 @@ const CardDetectionApp = () => {
     setCountdown(0);
     setErrorMessage("");
     setSessionId("");
+    currentSessionIdRef.current = null; // Reset session ID ref
 
     // FIXED: Reset attempt tracking completely - this is for "Start New Session"
     setAttemptCount(0);
