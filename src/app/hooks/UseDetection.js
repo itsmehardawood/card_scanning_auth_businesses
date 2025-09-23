@@ -13,13 +13,36 @@ export const useDetection = (
   setErrorMessage,
   setFrontScanState,
   stopRequestedRef, // Added this parameter from your main component
-  setNeedsRestartFromFront // Added flag setter for restart scenarios
+  setNeedsRestartFromFront, // Added flag setter for restart scenarios
+  clearDetectionTimeout // Added to clear external timeout when fake card detected
 ) => {
   const captureIntervalRef = useRef(null);
+  const currentTimeoutRef = useRef(null); // Track current detection timeout
+
+  // Helper function to clear any existing detection timeouts
+  const clearAllTimeouts = () => {
+    if (currentTimeoutRef.current) {
+      clearTimeout(currentTimeoutRef.current);
+      currentTimeoutRef.current = null;
+      console.log("🔧 Cleared existing detection timeout");
+    }
+    if (captureIntervalRef.current) {
+      clearInterval(captureIntervalRef.current);
+      captureIntervalRef.current = null;
+      console.log("🔧 Cleared existing capture interval");
+    }
+  };
 
 
 
 const captureAndSendFramesFront = async (phase, passedSessionId) => {
+    // Clear any existing timeouts/intervals before starting new detection
+    clearAllTimeouts();
+    
+    // Create unique detection ID for debugging
+    const detectionId = Math.random().toString(36).substr(2, 9);
+    console.log(`🆔 Starting ${phase} detection with ID: ${detectionId}`);
+    
     // Use passed session ID if available, otherwise fallback to state or create new
     const currentSessionId = passedSessionId || sessionId || `session_${Date.now()}`;
     if (!passedSessionId && !sessionId) {
@@ -40,6 +63,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
       let frameNumber = 0;
       let timeoutId = null;
       let isComplete = false;
+      let isProcessingFrame = false; // Prevent concurrent API calls
 
       const cleanup = () => {
         if (captureIntervalRef.current) {
@@ -50,13 +74,27 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
           clearTimeout(timeoutId);
           timeoutId = null;
         }
+        if (currentTimeoutRef.current) {
+          clearTimeout(currentTimeoutRef.current);
+          currentTimeoutRef.current = null;
+        }
         setIsProcessing(false);
+        isProcessingFrame = false;
       };
 
       const processFrame = async () => {
         try {
-          if (isComplete || stopRequestedRef.current) return;
+          if (isComplete || stopRequestedRef.current) {
+            console.log(`🛑 ${detectionId}: Skipping frame processing (isComplete: ${isComplete}, stopRequested: ${stopRequestedRef.current})`);
+            return;
+          }
 
+          if (isProcessingFrame) {
+            console.log(`🛑 ${detectionId}: Already processing frame, skipping duplicate call`);
+            return;
+          }
+
+          isProcessingFrame = true;
           const frame = await captureFrame(videoRef, canvasRef);
 
           if (frame && frame.size > 0) {
@@ -73,11 +111,26 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
               lastApiResponse = apiResponse;
               setIsProcessing(false);
+              isProcessingFrame = false; // Reset processing flag
 
               // ⚠️ PRIORITY CHECK: Fake card detection - check first before anything else
               if (apiResponse.fake_card === true) {
                 isComplete = true;
+                
+                // Clear timeout FIRST before cleanup
+                if (timeoutId) {
+                  clearTimeout(timeoutId);
+                  timeoutId = null;
+                  console.log("🔧 Cleared internal timeout for fake card detection");
+                }
+                
                 cleanup();
+                
+                if (clearDetectionTimeout) {
+                  clearDetectionTimeout();
+                  console.log("🔧 Cleared external timeout for fake card detection");
+                }
+                
                 console.log("❌ Fake card detected - failing detection immediately");
                 setErrorMessage("Fake card detected. Please use original card.");
                 setCurrentPhase("error");
@@ -116,9 +169,23 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                 physicalCard
               ) {
                 isComplete = true;
+                
+                // Clear timeout explicitly before cleanup
+                if (timeoutId) {
+                  clearTimeout(timeoutId);
+                  timeoutId = null;
+                  console.log("🔧 Cleared timeout on successful front completion");
+                }
+                
                 cleanup();
+                
+                if (clearDetectionTimeout) {
+                  clearDetectionTimeout();
+                  console.log("🔧 Cleared external timeout on successful front completion");
+                }
+                
                 console.log(
-                  "Front side complete - physical card detected with either chip or bank logo"
+                  `✅ Front side complete (${detectionId}) - physical card detected with either chip or bank logo`
                 );
                 resolve(apiResponse);
                 return;
@@ -134,6 +201,13 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                 if (lastApiResponse) {
                   // ⚠️ PRIORITY CHECK: Check fake card detection even when max frames reached
                   if (lastApiResponse.fake_card === true) {
+                    if (timeoutId) {
+                      clearTimeout(timeoutId);
+                      timeoutId = null;
+                    }
+                    if (clearDetectionTimeout) {
+                      clearDetectionTimeout();
+                    }
                     console.log("❌ Max frames: Fake card detected");
                     setErrorMessage("Fake card detected. Please use original card.");
                     setCurrentPhase("error");
@@ -185,6 +259,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
             } catch (apiError) {
               console.error(`API error for frame ${frameNumber}:`, apiError);
               setIsProcessing(false);
+              isProcessingFrame = false; // Reset processing flag
               isComplete = true;
               cleanup();
               setErrorMessage(
@@ -194,9 +269,12 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
               reject(new Error(`API request failed: ${apiError.message}`));
               return;
             }
+          } else {
+            isProcessingFrame = false; // Reset flag if no frame captured
           }
         } catch (error) {
           console.error("Error in frame processing:", error);
+          isProcessingFrame = false; // Reset flag on any error
         }
       };
 
@@ -204,66 +282,95 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
       captureIntervalRef.current = setInterval(processFrame, 1300);
 
       timeoutId = setTimeout(() => {
-        if (!isComplete) {
-          cleanup();
-          if (lastApiResponse) {
-            console.log("Timeout reached, checking conditions...");
-            
-            // ⚠️ PRIORITY CHECK: Check fake card detection even on timeout
-            if (lastApiResponse.fake_card === true) {
-              console.log("❌ Timeout: Fake card detected");
-              setErrorMessage("Fake card detected. Please use original card.");
-              setCurrentPhase("error");
-              reject(new Error("Timeout: Fake card detected"));
-              return;
+        console.log(`🕐 Timeout handler triggered for ${detectionId}. isComplete: ${isComplete}, timeoutId: ${timeoutId}`);
+        
+        // Double-check if timeout was already cleared
+        if (timeoutId === null) {
+          console.log(`🔧 Timeout for ${detectionId} was cleared, ignoring execution`);
+          return;
+        }
+        
+        if (isComplete) {
+          console.log(`🔧 Detection ${detectionId} already completed, ignoring timeout`);
+          return;
+        }
+        
+        // Check if we've moved past the front phase - if so, don't trigger timeout error
+        // This prevents front phase timeout from firing during back phase or results
+        if (lastApiResponse && lastApiResponse.buffer_info?.front_frames_buffered >= 4) {
+          console.log(`🔧 Front phase ${detectionId} was successful (sufficient frames buffered), ignoring timeout`);
+          return;
+        }
+        
+        console.log(`⏰ Proceeding with timeout logic for ${detectionId}`);
+        isComplete = true;
+        cleanup();
+        
+        if (lastApiResponse) {
+          console.log("Timeout reached, checking conditions...");
+          
+          // ⚠️ PRIORITY CHECK: Check fake card detection even on timeout
+          if (lastApiResponse.fake_card === true) {
+            if (clearDetectionTimeout) {
+              clearDetectionTimeout();
             }
+            console.log("❌ Timeout: Fake card detected");
+            setErrorMessage("Fake card detected. Please use original card.");
+            setCurrentPhase("error");
+            reject(new Error("Timeout: Fake card detected"));
+            return;
+          }
             
-            const bufferedFrames =
-              lastApiResponse.buffer_info?.front_frames_buffered || 0;
-            const chipDetected = lastApiResponse.chip || false;
-            const bankLogoDetected = lastApiResponse.bank_logo || false;
-            const physicalCard = lastApiResponse.physical_card || false;
+          const bufferedFrames =
+            lastApiResponse.buffer_info?.front_frames_buffered || 0;
+          const chipDetected = lastApiResponse.chip || false;
+          const bankLogoDetected = lastApiResponse.bank_logo || false;
+          const physicalCard = lastApiResponse.physical_card || false;
 
-            // CHANGED: Either chip OR bank logo required
-            if (
-              bufferedFrames >= 4 &&
-              (chipDetected || bankLogoDetected) &&
-              physicalCard
-            ) {
-              resolve(lastApiResponse);
-              return;
-            }
+          // CHANGED: Either chip OR bank logo required
+          if (
+            bufferedFrames >= 4 &&
+            (chipDetected || bankLogoDetected) &&
+            physicalCard
+          ) {
+            isComplete = true;
+            cleanup();
+            resolve(lastApiResponse);
+            return;
+          }
 
-            if (
-              bufferedFrames >= 4 &&
-              (!chipDetected && !bankLogoDetected || !physicalCard)
-            ) {
-              if (!chipDetected && !bankLogoDetected && !physicalCard) {
-                setErrorMessage(
-                  "Timeout: Neither chip nor bank logo detected, and physical card not detected."
-                );
-              } else if (!physicalCard) {
-                setErrorMessage(
-                  "Timeout: Physical card not detected. Please ensure you're scanning a real card."
-                );
-              } else if (!chipDetected && !bankLogoDetected) {
-                setErrorMessage(
-                  "Timeout: Neither chip nor bank logo detected. Please ensure at least one is visible."
-                );
-              }
-            } else {
+          if (
+            bufferedFrames >= 4 &&
+            (!chipDetected && !bankLogoDetected || !physicalCard)
+          ) {
+            if (!chipDetected && !bankLogoDetected && !physicalCard) {
               setErrorMessage(
-                "Timeout: Failed to capture sufficient frames. Please try again."
+                "Timeout: Neither chip nor bank logo detected, and physical card not detected."
+              );
+            } else if (!physicalCard) {
+              setErrorMessage(
+                "Timeout: Physical card not detected. Please ensure you're scanning a real card."
+              );
+            } else if (!chipDetected && !bankLogoDetected) {
+              setErrorMessage(
+                "Timeout: Neither chip nor bank logo detected. Please ensure at least one is visible."
               );
             }
-
-            setCurrentPhase("error");
-            reject(new Error("Timeout: Required conditions not met"));
           } else {
-            reject(new Error("Timeout: No successful API responses received"));
+            setErrorMessage(
+              "Timeout: Failed to capture sufficient frames. Please try again."
+            );
           }
+
+          setCurrentPhase("error");
+          reject(new Error("Timeout: Required conditions not met"));
+        } else {
+          reject(new Error("Timeout: No successful API responses received"));
         }
-      }, 120000);
+      }, 100000);
+      
+      // Store timeout ID in ref for cleanup
+      currentTimeoutRef.current = timeoutId;
     });
   };
 
@@ -290,6 +397,9 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
   // Regular capture function for back side with complete_scan check
   const captureAndSendFrames = async (phase, passedSessionId) => {
+    // Clear any existing timeouts/intervals before starting new detection
+    clearAllTimeouts();
+    
     // Use passed session ID if available, otherwise fallback to state or create new
     const currentSessionId = passedSessionId || sessionId || `session_${Date.now()}`;
     if (!passedSessionId && !sessionId) {
@@ -307,9 +417,13 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
     }
 
     return new Promise((resolve, reject) => {
+      const detectionId = Math.random().toString(36).substr(2, 9); // Unique ID for this detection
+      console.log(`🆔 Starting ${phase} detection with ID: ${detectionId}`);
+      
       let frameNumber = 0;
       let timeoutId = null;
       let isComplete = false;
+      let isProcessingFrame = false; // Prevent concurrent API calls
 
       const cleanup = () => {
         if (captureIntervalRef.current) {
@@ -320,14 +434,27 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
           clearTimeout(timeoutId);
           timeoutId = null;
         }
+        if (currentTimeoutRef.current) {
+          clearTimeout(currentTimeoutRef.current);
+          currentTimeoutRef.current = null;
+        }
         setIsProcessing(false);
       };
 
       const processFrame = async () => {
         try {
           // Check stopRequestedRef
-          if (isComplete || stopRequestedRef.current) return;
+          if (isComplete || stopRequestedRef.current) {
+            console.log(`🛑 ${detectionId}: Skipping frame processing (isComplete: ${isComplete}, stopRequested: ${stopRequestedRef.current})`);
+            return;
+          }
 
+          if (isProcessingFrame) {
+            console.log(`🛑 ${detectionId}: Already processing frame, skipping duplicate call`);
+            return;
+          }
+
+          isProcessingFrame = true;
           const frame = await captureFrame(videoRef, canvasRef);
 
           if (frame && frame.size > 0) {
@@ -344,6 +471,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
               lastApiResponse = apiResponse;
               setIsProcessing(false);
+              isProcessingFrame = false; // Reset processing flag
 
               const bufferedFrames =
                 phase === "front"
@@ -377,17 +505,33 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
                   if (count >= requiredBackSideFeatures) {
                     isComplete = true;
+                    
+                    // Clear timeout explicitly before cleanup
+                    if (timeoutId) {
+                      clearTimeout(timeoutId);
+                      timeoutId = null;
+                      console.log("🔧 Cleared internal timeout for successful back completion");
+                    }
+                    
                     cleanup();
+                    
+                    if (clearDetectionTimeout) {
+                      clearDetectionTimeout();
+                      console.log("🔧 Cleared external timeout for successful back completion");
+                    }
+                    
                     console.log(
                       `Back side complete - complete_scan is true, status is not retry, and ${count}/4 features detected`
                     );
+                    console.log(`🔧 DEBUG: Detection ${detectionId} - isComplete set to true, cleanup called, resolving with response`);
                     resolve(apiResponse);
                     return;
                   } else {
                     console.log(`Back side complete_scan is true`);
                     isComplete = true;
                     cleanup();
-                    //  resolve(apiResponse);
+                    resolve(apiResponse);
+                    return;
                   }
                 }
               } else if (phase !== "back" && bufferedFrames >= 4) {
@@ -407,7 +551,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
                 if (lastApiResponse) {
                   if (phase === "back") {
-                    if (lastApiResponse.complete_scan === true) {
+                    if (lastApiResponse.complete_scan === true ) {
                       if (lastApiResponse.status === "retry") {
                         console.log(
                           "Max frames reached, complete_scan is true but status is retry"
@@ -432,6 +576,8 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                           console.log(
                             "Max frames reached, complete_scan is true, status is not retry, and sufficient features detected, resolving"
                           );
+                          isComplete = true;
+                          cleanup();
                           resolve(lastApiResponse);
                         } else {
                           setErrorMessage(
@@ -459,6 +605,8 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                       );
                     }
                   } else {
+                    isComplete = true;
+                    cleanup();
                     resolve(lastApiResponse);
                   }
                 } else {
@@ -473,6 +621,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
             } catch (apiError) {
               console.error(`API error for frame ${frameNumber}:`, apiError);
               setIsProcessing(false);
+              isProcessingFrame = false; // Reset processing flag
 
               // Stop the scanning process on API failure
               isComplete = true;
@@ -484,9 +633,12 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
               reject(new Error(`API request failed: ${apiError.message}`));
               return;
             }
+          } else {
+            isProcessingFrame = false; // Reset flag if no frame captured
           }
         } catch (error) {
           console.error("Error in frame processing:", error);
+          isProcessingFrame = false; // Reset flag on any error
         }
       };
 
@@ -494,10 +646,35 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
       captureIntervalRef.current = setInterval(processFrame, 1200);
 
       timeoutId = setTimeout(() => {
-        if (!isComplete) {
-          cleanup();
-          if (lastApiResponse) {
-            console.log("Timeout reached, checking final conditions...");
+        console.log(`🔧 DEBUG: Detection ${detectionId} - Timeout fired. isComplete: ${isComplete}, timeoutId: ${timeoutId}`);
+        
+        // Double-check if timeout was already cleared
+        if (timeoutId === null) {
+          console.log(`🔧 Timeout for ${detectionId} was cleared, ignoring execution`);
+          return;
+        }
+        
+        // Double-check isComplete in case of race condition
+        if (isComplete) {
+          console.log(`🔧 DEBUG: Detection ${detectionId} - isComplete is true, ignoring timeout`);
+          return;
+        }
+        
+        // Check if back phase was successful - if complete_scan is true and we have features, don't trigger error
+        if (phase === "back" && lastApiResponse && lastApiResponse.complete_scan === true) {
+          const { count } = countBackSideFeatures(lastApiResponse);
+          if (count >= 2) {
+            console.log(`🔧 Back phase ${detectionId} was successful (complete_scan: true, ${count} features), ignoring timeout`);
+            return;
+          }
+        }
+        
+        console.log(`⏰ Proceeding with timeout logic for ${detectionId}`);
+        isComplete = true;
+        cleanup();
+        
+        if (lastApiResponse) {
+          console.log("Timeout reached, checking final conditions...");
 
             if (phase === "back") {
               if (lastApiResponse.complete_scan === true) {
@@ -555,11 +732,10 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
             console.log("Timeout reached, using last response");
             resolve(lastApiResponse);
-          } else {
-            reject(new Error("Timeout: No successful API responses received"));
-          }
+        } else {
+          reject(new Error("Timeout: No successful API responses received"));
         }
-      }, 120000);
+      }, 100000);
     });
   };
 
@@ -567,6 +743,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
     captureAndSendFramesFront,
     captureAndSendFrames,
     captureIntervalRef,
+    clearAllTimeouts, // Export for external cleanup
   };
 };
 

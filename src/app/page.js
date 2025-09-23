@@ -226,6 +226,7 @@ const CardDetectionApp = () => {
     captureAndSendFramesFront,
     captureAndSendFrames,
     captureIntervalRef,
+    clearAllTimeouts,
   } = useDetection(
     videoRef,
     canvasRef,
@@ -236,7 +237,8 @@ const CardDetectionApp = () => {
     setErrorMessage,
     setFrontScanState,
     stopRequestedRef,
-    setNeedsRestartFromFront
+    setNeedsRestartFromFront,
+    clearDetectionTimeout
   );
 
   // FIXED: Helper function to handle detection failures with attempt tracking
@@ -585,6 +587,9 @@ const CardDetectionApp = () => {
       setDetectionActive(true);
       stopRequestedRef.current = false;
 
+      // Clear any existing timeouts before starting
+      clearAllTimeouts();
+
       // Start detection timeout
       startDetectionTimeout("Front side");
 
@@ -593,6 +598,7 @@ const CardDetectionApp = () => {
 
         if (!stopRequestedRef.current) {
           clearDetectionTimeout();
+          clearAllTimeouts(); // Clear any remaining detection timeouts
           setDetectionActive(false);
 
           console.log("✅ Front scan successful! Resetting attempt count.");
@@ -607,10 +613,18 @@ const CardDetectionApp = () => {
         console.error("Front side detection failed:", error);
         setDetectionActive(false);
         if (!stopRequestedRef.current) {
-          handleDetectionFailure(
-            `Front side detection failed`,
-            "front"
-          );
+          // Check if this is a fake card detection error
+          if (error.message && error.message.includes("Fake card detected")) {
+            handleDetectionFailure(
+              "Fake card detected. Please use original card.",
+              "front"
+            );
+          } else {
+            handleDetectionFailure(
+              `Front side detection failed`,
+              "front"
+            );
+          }
         }
       }
     });
@@ -619,6 +633,12 @@ const CardDetectionApp = () => {
   const startBackSideDetection = async () => {
     if (maxAttemptsReached) {
       console.log("🚫 Cannot start back scan - max attempts reached");
+      return;
+    }
+
+    // Prevent multiple concurrent back side detections
+    if (detectionActive) {
+      console.log("🚫 Cannot start back scan - detection already active");
       return;
     }
 
@@ -633,6 +653,9 @@ const CardDetectionApp = () => {
       setDetectionActive(true);
       stopRequestedRef.current = false;
 
+      // Clear any existing timeouts before starting
+      clearAllTimeouts();
+
       // Start detection timeout
       startDetectionTimeout("Back side");
 
@@ -644,6 +667,7 @@ const CardDetectionApp = () => {
 
         if (!stopRequestedRef.current && !lockedRef.current) {
           clearDetectionTimeout();
+          clearAllTimeouts(); // Clear any remaining detection timeouts
           setDetectionActive(false);
 
           if (finalResult.encrypted_card_data && finalResult.status) {
@@ -669,10 +693,18 @@ const CardDetectionApp = () => {
       } catch (error) {
         setDetectionActive(false);
         if (!stopRequestedRef.current && !lockedRef.current) {
-          handleDetectionFailure(
-            `Back side detection failed`,
-            "back"
-          );
+          // Check if this is a fake card detection error
+          if (error.message && error.message.includes("Fake card detected")) {
+            handleDetectionFailure(
+              "Fake card detected. Please use original card.",
+              "back"
+            );
+          } else {
+            handleDetectionFailure(
+              `Back side detection failed`,
+              "back"
+            );
+          }
         }
       }
     });
