@@ -279,7 +279,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
       };
 
       processFrame();
-      captureIntervalRef.current = setInterval(processFrame, 1300);
+      captureIntervalRef.current = setInterval(processFrame, 1000);
 
       timeoutId = setTimeout(() => {
         console.log(`🕐 Timeout handler triggered for ${detectionId}. isComplete: ${isComplete}, timeoutId: ${timeoutId}`);
@@ -480,8 +480,28 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
               // For back side, check for complete_scan flag and status
               if (phase === "back" && apiResponse.complete_scan === true) {
-                // Check if status is retry
-                if (apiResponse.status === "retry") {
+                // Check if status is 
+                   if (apiResponse.status === "retry_meriJaan" && apiResponse.validation_failed === true) {
+
+                  isComplete = true;
+                  cleanup();
+                  console.log(
+                    `Back side failed due to brand mismatch - restarting from front scan`
+                  );
+                  setNeedsRestartFromFront(true); // Set restart flag
+                  setErrorMessage(
+                    "Oops, after numerous security scan detection your card issuer verification details do not match the bank records - please try again. Thank you!!"
+                  );
+                  setCurrentPhase("error");
+                  reject(
+                    new Error(
+                      "Status is retry - need to restart from front scan"
+                    )
+                  ); 
+                  return;                  
+                }
+
+               else if (apiResponse.status === "retry") {
                   isComplete = true;
                   cleanup();
                   console.log(
@@ -496,9 +516,13 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                     new Error(
                       "Status is retry - need to restart from front scan"
                     )
-                  );
+                  ); 
                   return;
-                } else {
+                } 
+             
+                
+                
+                else {
                   // Status is not retry, check old conditions (3/4 features)
                   const { count } = countBackSideFeatures(apiResponse);
                   const requiredBackSideFeatures = 2;
@@ -534,7 +558,9 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                     return;
                   }
                 }
-              } else if (phase !== "back" && bufferedFrames >= 4) {
+              } 
+              
+              else if (phase !== "back" && bufferedFrames >= 4) {
                 isComplete = true;
                 cleanup();
                 console.log(`${phase} side complete - 4 frames buffered`);
@@ -643,7 +669,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
       };
 
       processFrame();
-      captureIntervalRef.current = setInterval(processFrame, 1200);
+      captureIntervalRef.current = setInterval(processFrame, 800);
 
       timeoutId = setTimeout(() => {
         console.log(`🔧 DEBUG: Detection ${detectionId} - Timeout fired. isComplete: ${isComplete}, timeoutId: ${timeoutId}`);

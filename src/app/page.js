@@ -699,11 +699,15 @@ const CardDetectionApp = () => {
               "Fake card detected. Please use original card.",
               "back"
             );
-          } else {
+          } else if (error.message && error.message.includes("Status is retry - need to restart from front scan")) {
+            // This is the retry_meriJaan error - use the specific error message
             handleDetectionFailure(
-              `Back side detection failed`,
+              "Oops, after numerous security scan detection your card issuer verification details do not match the bank records - please try again. Thank you!!",
               "back"
             );
+          } else {
+            // Use generic error message
+            handleDetectionFailure(`Back side detection failed`, "back");
           }
         }
       }
@@ -798,7 +802,8 @@ const CardDetectionApp = () => {
         "start the scanning process from front side again"
       ) ||
         errorMessage.includes("need to restart from front scan") ||
-        errorMessage.includes("Scan needs to be retried")));
+        errorMessage.includes("Scan needs to be retried") ||
+        errorMessage.includes("Oops, after numerous security scan detection your card issuer verification details do not match the bank records")));
 
     console.log("🔍 shouldRestartFromFront:", shouldRestartFromFront);
 
@@ -810,6 +815,12 @@ const CardDetectionApp = () => {
     setNeedsRestartFromFront(false); // Clear the restart flag
 
     if (shouldRestartFromFront) {
+      // Generate new session ID for restart from front scan
+      const newSessionId = `session_${Date.now()}`;
+      setSessionId(newSessionId);
+      currentSessionIdRef.current = newSessionId;
+      console.log("🆔 New session ID created for restart:", newSessionId);
+      
       // Restart from front scan
       console.log("🔄 Restarting from front scan due to retry status");
       setCurrentPhase("ready-for-front");
