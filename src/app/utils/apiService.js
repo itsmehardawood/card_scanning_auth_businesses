@@ -16,11 +16,11 @@ export const sendFrameToAPI = async (frame, phase, sessionId, frameNumber) => {
       );
 
       // dev server
-      // const response = await fetch("https://testscan.cardnest.io/detect", {
+      const response = await fetch("https://testscan.cardnest.io/detect", {
         // production..
         // const response = await fetch('https://api.cardnest.io/detect', {
         // testing..
-         const response = await fetch('https://a5fa9d8915f1.ngrok-free.app/detect', {
+        //  const response = await fetch('https://a5fa9d8915f1.ngrok-free.app/detect', {
         method: "POST",
         body: formData,
         headers: {
