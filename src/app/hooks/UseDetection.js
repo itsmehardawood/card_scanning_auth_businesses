@@ -279,7 +279,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
       };
 
       processFrame();
-      captureIntervalRef.current = setInterval(processFrame, 1000);
+      captureIntervalRef.current = setInterval(processFrame, 800);
 
       timeoutId = setTimeout(() => {
         console.log(`🕐 Timeout handler triggered for ${detectionId}. isComplete: ${isComplete}, timeoutId: ${timeoutId}`);
