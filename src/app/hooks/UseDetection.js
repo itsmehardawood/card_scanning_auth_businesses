@@ -367,7 +367,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
         } else {
           reject(new Error("Timeout: No successful API responses received"));
         }
-      }, 100000);
+      }, 15000); // 15 second timeout
       
       // Store timeout ID in ref for cleanup
       currentTimeoutRef.current = timeoutId;
@@ -480,9 +480,8 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
               // For back side, check for complete_scan flag and status
               if (phase === "back" && apiResponse.complete_scan === true) {
-                // Check if status is 
-                   if (apiResponse.status === "retry_meriJaan" && apiResponse.validation_failed === true) {
-
+                // Check if status is retry_meriJaan with validation_failed
+                if (apiResponse.status === "retry_meriJaan" && apiResponse.validation_failed === true) {
                   isComplete = true;
                   cleanup();
                   console.log(
@@ -495,13 +494,13 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                   setCurrentPhase("error");
                   reject(
                     new Error(
-                      "Status is retry - need to restart from front scan"
+                      "retry_meriJaan - card issuer verification failed"
                     )
                   ); 
                   return;                  
                 }
-
-               else if (apiResponse.status === "retry") {
+                // Check if status is regular retry
+                else if (apiResponse.status === "retry") {
                   isComplete = true;
                   cleanup();
                   console.log(
@@ -761,7 +760,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
         } else {
           reject(new Error("Timeout: No successful API responses received"));
         }
-      }, 100000);
+      }, 20000); // 20 second timeout
     });
   };
 

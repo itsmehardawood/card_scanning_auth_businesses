@@ -699,10 +699,16 @@ const CardDetectionApp = () => {
               "Fake card detected. Please use original card.",
               "back"
             );
-          } else if (error.message && error.message.includes("Status is retry - need to restart from front scan")) {
+          } else if (error.message && error.message.includes("retry_meriJaan - card issuer verification failed")) {
             // This is the retry_meriJaan error - use the specific error message
             handleDetectionFailure(
               "Oops, after numerous security scan detection your card issuer verification details do not match the bank records - please try again. Thank you!!",
+              "back"
+            );
+          } else if (error.message && error.message.includes("Status is retry - need to restart from front scan")) {
+            // This is the regular retry error - use the generic retry message
+            handleDetectionFailure(
+              "Scan needs to be retried. Please start the scanning process from front side again.",
               "back"
             );
           } else {
