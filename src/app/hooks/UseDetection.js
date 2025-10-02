@@ -14,10 +14,13 @@ export const useDetection = (
   setFrontScanState,
   stopRequestedRef, // Added this parameter from your main component
   setNeedsRestartFromFront, // Added flag setter for restart scenarios
-  clearDetectionTimeout // Added to clear external timeout when fake card detected
+  clearDetectionTimeout, // Added to clear external timeout when fake card detected
+  scanId // Added scanId parameter to pass to API calls
 ) => {
   const captureIntervalRef = useRef(null);
   const currentTimeoutRef = useRef(null); // Track current detection timeout
+  const activeDetectionRef = useRef(null); // Track active detection ID
+  const isDetectionRunningRef = useRef(false); // Global flag to prevent concurrent detections
 
   // Helper function to clear any existing detection timeouts
   const clearAllTimeouts = () => {
@@ -31,17 +34,33 @@ export const useDetection = (
       captureIntervalRef.current = null;
       console.log("🔧 Cleared existing capture interval");
     }
+    // Clear active detection tracking
+    if (activeDetectionRef.current) {
+      console.log(`🔧 Clearing active detection: ${activeDetectionRef.current}`);
+      activeDetectionRef.current = null;
+    }
+    isDetectionRunningRef.current = false;
   };
 
 
 
 const captureAndSendFramesFront = async (phase, passedSessionId) => {
+    // Check if another detection is already running
+    if (isDetectionRunningRef.current) {
+      console.log(`🚫 Cannot start ${phase} detection - another detection is already running`);
+      throw new Error("Another detection is already running");
+    }
+    
     // Clear any existing timeouts/intervals before starting new detection
     clearAllTimeouts();
     
     // Create unique detection ID for debugging
     const detectionId = Math.random().toString(36).substr(2, 9);
     console.log(`🆔 Starting ${phase} detection with ID: ${detectionId}`);
+    
+    // Mark detection as running and set active detection ID
+    isDetectionRunningRef.current = true;
+    activeDetectionRef.current = detectionId;
     
     // Use passed session ID if available, otherwise fallback to state or create new
     const currentSessionId = passedSessionId || sessionId || `session_${Date.now()}`;
@@ -80,6 +99,13 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
         }
         setIsProcessing(false);
         isProcessingFrame = false;
+        
+        // Clear active detection tracking if this is the active detection
+        if (activeDetectionRef.current === detectionId) {
+          console.log(`🔧 Cleanup: Clearing active detection ${detectionId}`);
+          activeDetectionRef.current = null;
+          isDetectionRunningRef.current = false;
+        }
       };
 
       const processFrame = async () => {
@@ -106,7 +132,8 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                 frame,
                 phase,
                 currentSessionId,
-                frameNumber
+                frameNumber,
+                scanId
               );
 
               lastApiResponse = apiResponse;
@@ -284,6 +311,12 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
       timeoutId = setTimeout(() => {
         console.log(`🕐 Timeout handler triggered for ${detectionId}. isComplete: ${isComplete}, timeoutId: ${timeoutId}`);
         
+        // Check if this detection is still the active one
+        if (activeDetectionRef.current !== detectionId) {
+          console.log(`🔧 Timeout for ${detectionId} - different detection is now active (${activeDetectionRef.current}), ignoring`);
+          return;
+        }
+        
         // Double-check if timeout was already cleared
         if (timeoutId === null) {
           console.log(`🔧 Timeout for ${detectionId} was cleared, ignoring execution`);
@@ -397,8 +430,22 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
 
   // Regular capture function for back side with complete_scan check
   const captureAndSendFrames = async (phase, passedSessionId) => {
+    // Check if another detection is already running
+    if (isDetectionRunningRef.current) {
+      console.log(`🚫 Cannot start ${phase} detection - another detection is already running`);
+      throw new Error("Another detection is already running");
+    }
+    
     // Clear any existing timeouts/intervals before starting new detection
     clearAllTimeouts();
+    
+    // Create unique detection ID for debugging
+    const detectionId = Math.random().toString(36).substr(2, 9);
+    console.log(`🆔 Starting ${phase} detection with ID: ${detectionId}`);
+    
+    // Mark detection as running and set active detection ID
+    isDetectionRunningRef.current = true;
+    activeDetectionRef.current = detectionId;
     
     // Use passed session ID if available, otherwise fallback to state or create new
     const currentSessionId = passedSessionId || sessionId || `session_${Date.now()}`;
@@ -417,9 +464,6 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
     }
 
     return new Promise((resolve, reject) => {
-      const detectionId = Math.random().toString(36).substr(2, 9); // Unique ID for this detection
-      console.log(`🆔 Starting ${phase} detection with ID: ${detectionId}`);
-      
       let frameNumber = 0;
       let timeoutId = null;
       let isComplete = false;
@@ -439,6 +483,13 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
           currentTimeoutRef.current = null;
         }
         setIsProcessing(false);
+        
+        // Clear active detection tracking if this is the active detection
+        if (activeDetectionRef.current === detectionId) {
+          console.log(`🔧 Cleanup: Clearing active detection ${detectionId}`);
+          activeDetectionRef.current = null;
+          isDetectionRunningRef.current = false;
+        }
       };
 
       const processFrame = async () => {
@@ -466,7 +517,8 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                 frame,
                 phase,
                 currentSessionId,
-                frameNumber
+                frameNumber,
+                scanId
               );
 
               lastApiResponse = apiResponse;
@@ -517,45 +569,36 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                     )
                   ); 
                   return;
-                } 
-             
-                
-                
-                else {
-                  // Status is not retry, check old conditions (3/4 features)
-                  const { count } = countBackSideFeatures(apiResponse);
-                  const requiredBackSideFeatures = 2;
-
-                  if (count >= requiredBackSideFeatures) {
-                    isComplete = true;
-                    
-                    // Clear timeout explicitly before cleanup
-                    if (timeoutId) {
-                      clearTimeout(timeoutId);
-                      timeoutId = null;
-                      console.log("🔧 Cleared internal timeout for successful back completion");
-                    }
-                    
-                    cleanup();
-                    
-                    if (clearDetectionTimeout) {
-                      clearDetectionTimeout();
-                      console.log("🔧 Cleared external timeout for successful back completion");
-                    }
-                    
-                    console.log(
-                      `Back side complete - complete_scan is true, status is not retry, and ${count}/4 features detected`
-                    );
-                    console.log(`🔧 DEBUG: Detection ${detectionId} - isComplete set to true, cleanup called, resolving with response`);
-                    resolve(apiResponse);
-                    return;
-                  } else {
-                    console.log(`Back side complete_scan is true`);
-                    isComplete = true;
-                    cleanup();
-                    resolve(apiResponse);
-                    return;
+                }
+                // Check for successful completion: status must be "success" and encrypted_data must be present
+                else if (apiResponse.status === "success" && apiResponse.encrypted_data) {
+                  isComplete = true;
+                  
+                  // Clear timeout explicitly before cleanup
+                  if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                    console.log("🔧 Cleared internal timeout for successful back completion");
                   }
+                  
+                  cleanup();
+                  
+                  if (clearDetectionTimeout) {
+                    clearDetectionTimeout();
+                    console.log("🔧 Cleared external timeout for successful back completion");
+                  }
+                  
+                  console.log(
+                    `Back side complete - complete_scan is true, status is success, and encrypted_data is present`
+                  );
+                  console.log(`🔧 DEBUG: Detection ${detectionId} - isComplete set to true, cleanup called, resolving with response`);
+                  resolve(apiResponse);
+                  return;
+                }
+                else {
+                  // complete_scan is true but either status is not "success" or encrypted_data is missing
+                  console.log(`Back side complete_scan is true but status is "${apiResponse.status}" and encrypted_data present: ${!!apiResponse.encrypted_data}`);
+                  // Continue processing more frames instead of resolving immediately
                 }
               } 
               
@@ -591,32 +634,25 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                             "Status is retry - need to restart from front scan"
                           )
                         );
+                      } else if (lastApiResponse.status === "success" && lastApiResponse.encrypted_data) {
+                        // Success condition: complete_scan true, status success, and encrypted_data present
+                        console.log(
+                          "Max frames reached, complete_scan is true, status is success, and encrypted_data is present, resolving"
+                        );
+                        isComplete = true;
+                        cleanup();
+                        resolve(lastApiResponse);
                       } else {
-                        // Check old conditions (3/4 features)
-                        const { count, detectedFeatures } =
-                          countBackSideFeatures(lastApiResponse);
-                        const requiredBackSideFeatures = 2;
-
-                        if (count >= requiredBackSideFeatures) {
-                          console.log(
-                            "Max frames reached, complete_scan is true, status is not retry, and sufficient features detected, resolving"
-                          );
-                          isComplete = true;
-                          cleanup();
-                          resolve(lastApiResponse);
-                        } else {
-                          setErrorMessage(
-                            `Insufficient back side features detected. Found ${count} out of required ${requiredBackSideFeatures} features (${detectedFeatures.join(
-                              ", "
-                            )}). Please ensure the card's back side is clearly visible.`
-                          );
-                          setCurrentPhase("error");
-                          reject(
-                            new Error(
-                              `Insufficient back side features: only ${count}/${requiredBackSideFeatures} detected`
-                            )
-                          );
-                        }
+                        // complete_scan is true but conditions not met
+                        setErrorMessage(
+                          `Back side scan incomplete. Status: ${lastApiResponse.status}, encrypted_data present: ${!!lastApiResponse.encrypted_data}. Please ensure the scan completes successfully.`
+                        );
+                        setCurrentPhase("error");
+                        reject(
+                          new Error(
+                            `Back side scan conditions not met: status=${lastApiResponse.status}, encrypted_data=${!!lastApiResponse.encrypted_data}`
+                          )
+                        );
                       }
                     } else {
                       setErrorMessage(
@@ -673,6 +709,12 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
       timeoutId = setTimeout(() => {
         console.log(`🔧 DEBUG: Detection ${detectionId} - Timeout fired. isComplete: ${isComplete}, timeoutId: ${timeoutId}`);
         
+        // Check if this detection is still the active one
+        if (activeDetectionRef.current !== detectionId) {
+          console.log(`🔧 Timeout for ${detectionId} - different detection is now active (${activeDetectionRef.current}), ignoring`);
+          return;
+        }
+        
         // Double-check if timeout was already cleared
         if (timeoutId === null) {
           console.log(`🔧 Timeout for ${detectionId} was cleared, ignoring execution`);
@@ -685,11 +727,10 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
           return;
         }
         
-        // Check if back phase was successful - if complete_scan is true and we have features, don't trigger error
+        // Check if back phase was successful - if complete_scan is true and we have success status with encrypted_data, don't trigger error
         if (phase === "back" && lastApiResponse && lastApiResponse.complete_scan === true) {
-          const { count } = countBackSideFeatures(lastApiResponse);
-          if (count >= 2) {
-            console.log(`🔧 Back phase ${detectionId} was successful (complete_scan: true, ${count} features), ignoring timeout`);
+          if (lastApiResponse.status === "success" && lastApiResponse.encrypted_data) {
+            console.log(`🔧 Back phase ${detectionId} was successful (complete_scan: true, status: success, encrypted_data present), ignoring timeout`);
             return;
           }
         }
@@ -718,32 +759,25 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
                     )
                   );
                   return;
+                } else if (lastApiResponse.status === "success" && lastApiResponse.encrypted_data) {
+                  // Success condition: complete_scan true, status success, and encrypted_data present
+                  console.log(
+                    "Timeout reached, complete_scan is true, status is success, and encrypted_data is present, resolving"
+                  );
+                  resolve(lastApiResponse);
+                  return;
                 } else {
-                  // Check old conditions (3/4 features)
-                  const { count, detectedFeatures } =
-                    countBackSideFeatures(lastApiResponse);
-                  const requiredBackSideFeatures = 2;
-
-                  if (count >= requiredBackSideFeatures) {
-                    console.log(
-                      "Timeout reached, complete_scan is true, status is not retry, and sufficient features detected, resolving"
-                    );
-                    resolve(lastApiResponse);
-                    return;
-                  } else {
-                    setErrorMessage(
-                      `Timeout: Insufficient back side features detected. Found ${count} out of required ${requiredBackSideFeatures} features (${detectedFeatures.join(
-                        ", "
-                      )}). Please ensure the card's back side is clearly visible.`
-                    );
-                    setCurrentPhase("error");
-                    reject(
-                      new Error(
-                        "Timeout: Insufficient back side features detected"
-                      )
-                    );
-                    return;
-                  }
+                  // complete_scan is true but conditions not met
+                  setErrorMessage(
+                    `Timeout: Back side scan incomplete. Status: ${lastApiResponse.status}, encrypted_data present: ${!!lastApiResponse.encrypted_data}. Please ensure the scan completes successfully.`
+                  );
+                  setCurrentPhase("error");
+                  reject(
+                    new Error(
+                      "Timeout: Back side scan conditions not met"
+                    )
+                  );
+                  return;
                 }
               } else {
                 setErrorMessage(

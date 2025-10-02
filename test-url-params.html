@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Parameter Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-link {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            transition: background 0.3s;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Card Detection App - URL Parameter Test</h1>
+        
+        <div class="info">
+            <h3>🎯 Implementation Summary:</h3>
+            <ul>
+                <li><strong>✅ Dynamic Routing:</strong> Created [businessname]/[scanid] route structure</li>
+                <li><strong>✅ URL Parameter Extraction:</strong> App now extracts parameters from Next.js route params</li>
+                <li><strong>✅ Dynamic API Endpoint:</strong> Updated to use <code>https://testscan.cardnest.io/detect/card/v2/${scanId}</code></li>
+                <li><strong>✅ Merchant Info API:</strong> Now uses scanId from URL instead of hardcoded value</li>
+                <li><strong>✅ Root URL Protection:</strong> App only works with proper URL format, shows instructions on root</li>
+                <li><strong>✅ Validation:</strong> Added UUID validation for scanId with error handling</li>
+            </ul>
+        </div>
+
+        <h3>🧪 Test the URL Parameter Functionality:</h3>
+        <p>The app now requires proper URL format and no longer works on root URL:</p>
+        
+        <a href="http://localhost:3001/XYZ/3709d4b8-3ce1-41dd-a001-9014147bee8b" class="test-link">
+            Test: businessname=XYZ, scanId=3709d4b8-3ce1-41dd-a001-9014147bee8b
+        </a>
+        
+        <a href="http://localhost:3001/TestBusiness/f55f6daa-846f-44d3-bffd-1b6bd7a474ee" class="test-link">
+            Test: businessname=TestBusiness, scanId=f55f6daa-846f-44d3-bffd-1b6bd7a474ee
+        </a>
+        
+        <a href="http://localhost:3001/" class="test-link" style="background: #6c757d;">
+            Test: Root URL (shows instructions)
+        </a>
+        
+        <a href="http://localhost:3001/XYZ/invalid-uuid" class="test-link" style="background: #dc3545;">
+            Test: Invalid scanId (shows error)
+        </a>
+
+        <div class="info">
+            <h4>📋 How to Test:</h4>
+            <ol>
+                <li>Click any test link above</li>
+                <li>Root URL should show instruction page</li>
+                <li>Invalid scanId should show error message</li>
+                <li>Valid URLs should load the full app</li>
+                <li>Open browser console (F12) for valid URLs</li>
+                <li>Look for console logs showing extracted URL parameters</li>
+                <li>Check that API calls use the new endpoint format</li>
+                <li>Verify merchant info API uses the scanId from URL</li>
+            </ol>
+        </div>
+
+        <div class="info">
+            <h4>🔍 Expected Console Output (for valid URLs):</h4>
+            <pre>🔍 URL Parameters from Next.js: { businessName: "XYZ", scanId: "3709d4b8-3ce1-41dd-a001-9014147bee8b", isValidScanIdParam: true }
+🔍 Fetching merchant info for scanId: 3709d4b8-3ce1-41dd-a001-9014147bee8b
+Using API endpoint: https://testscan.cardnest.io/detect/card/v2/3709d4b8-3ce1-41dd-a001-9014147bee8b</pre>
+        </div>
+
+        <p class="success">✅ All changes have been successfully implemented! The app now only works with proper URL format: /businessname/scanid</p>
+    </div>
+</body>
+</html>

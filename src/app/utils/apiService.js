@@ -1,5 +1,5 @@
 // API Service for Card Detection
-export const sendFrameToAPI = async (frame, phase, sessionId, frameNumber) => {
+export const sendFrameToAPI = async (frame, phase, sessionId, frameNumber, scanId) => {
   const maxRetries = 2;
   let lastError = null;
 
@@ -15,12 +15,20 @@ export const sendFrameToAPI = async (frame, phase, sessionId, frameNumber) => {
         `Sending frame ${frameNumber} for ${phase} phase to API (attempt ${attempt})...`
       );
 
-      // dev server
-      // const response = await fetch("https://testscan.cardnest.io/detect", {
-        // production..
-        const response = await fetch('https://api.cardnest.io/detect', {
-        // testing..
-        //  const response = await fetch('https://a5fa9d8915f1.ngrok-free.app/detect', {
+      // Construct API endpoint with scanId
+      // const apiEndpoint = scanId
+      //   ? `https://testscan.cardnest.io/detect/card/v2/${scanId}`
+      //   : "https://testscan.cardnest.io/detect/card/v2";
+
+
+       const apiEndpoint = scanId
+        ? `https://b4296d3e7271.ngrok-free.app/detect/card/v2/${scanId}`
+        : "https://testscan.cardnest.io/detect/card/v2";
+
+      console.log(`Using API endpoint: ${apiEndpoint}`);
+    
+      const response = await fetch(apiEndpoint, {
+      
         method: "POST",
         body: formData,
         headers: {

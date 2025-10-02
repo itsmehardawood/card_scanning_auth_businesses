@@ -25,12 +25,32 @@ const ControlPanel = ({
   const isActive = detectionActive || isProcessing || countdown > 0;
   const isLastAttempt = attemptCount === maxAttempts - 1;
 
-  // Show results if detection is complete
-  if (currentPhase === "results") {
-    return (
-      <DetectionResults finalOcrResults={finalOcrResults} onReset={onReset} />
-    );
-  }
+ // Show results success message
+// if (currentPhase === "results") {
+//   return (
+//     <div className="bg-white rounded-lg shadow-lg p-6 text-center">
+//       <div className="w-full sm:w-auto bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-xl p-6 shadow text-center">
+//         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+//           <div className="bg-green-500 rounded-full p-3">
+//             <Check className="w-6 h-6 text-white" />
+//           </div>
+//           <h3 className="text-lg sm:text-xl font-semibold text-green-700">
+//            Card Scan Successful!
+//           </h3>
+//         </div>
+      
+//       </div>
+
+//        </div>
+//   );
+// }
+
+// Show results success message
+if (currentPhase === "results") {
+  return null;
+}
+
+
 
   // Show error state with try again options
   if (currentPhase === "error") {
@@ -202,7 +222,7 @@ const ControlPanel = ({
         )}
 
       {/* Stop Button */}
-      {currentPhase !== "ready-for-front" && currentPhase !== "ready-for-back" && (
+      {currentPhase !== "ready-for-front" && currentPhase !== "ready-for-back" &&  currentPhase !== "results" && currentPhase !== "final_response" && !finalOcrResults && (
         <div className="flex flex-col sm:flex-row gap-3 justify-center items-center mt-4">
           <button
             onClick={onStop}
@@ -214,6 +234,8 @@ const ControlPanel = ({
           </button>
         </div>
       )}
+
+    
 
       {/* Status Section */}
       <div className="mt-4 text-center min-h-[60px] flex items-center justify-center">
