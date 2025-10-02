@@ -14,17 +14,14 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "CardNest LLC - Scan, Detect, Analyze, Prevent",
 
-   icons: {
+    icons: {
   },
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <head>
-        <link rel="icon" href="/images/favicon.jpg" type="image/jpg" />
-        {/* Or use: <link rel="icon" href="/favicon.ico" /> */}
-      </head>
+   
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
