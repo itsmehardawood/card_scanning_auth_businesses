@@ -400,7 +400,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
         } else {
           reject(new Error("Timeout: No successful API responses received"));
         }
-      }, 15000); // 15 second timeout
+      }, 40000); // 15 second timeout
       
       // Store timeout ID in ref for cleanup
       currentTimeoutRef.current = timeoutId;
@@ -533,7 +533,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
               // For back side, check for complete_scan flag and status
               if (phase === "back" && apiResponse.complete_scan === true) {
                 // Check if status is retry_meriJaan with validation_failed
-                if (apiResponse.status === "retry_meriJaan" && apiResponse.validation_failed === true) {
+                if (apiResponse.status === "mismatch" && apiResponse.validation_failed === true) {
                   isComplete = true;
                   cleanup();
                   console.log(
@@ -794,7 +794,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
         } else {
           reject(new Error("Timeout: No successful API responses received"));
         }
-      }, 20000); // 20 second timeout
+      }, 40000); // 20 second timeout
     });
   };
 
