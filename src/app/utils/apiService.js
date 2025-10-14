@@ -23,7 +23,8 @@ export const sendFrameToAPI = async (frame, phase, sessionId, frameNumber, scanI
 
        const apiEndpoint = scanId
         ? `https://testscan.cardnest.io/detect/card/v2/${scanId}`
-      
+       // ? `https://2d8bab06f781.ngrok-free.app/detect/card/v2/${scanId}`
+
         : "https://testscan.cardnest.io/detect/card/v2";
 
       console.log(`Using API endpoint: ${apiEndpoint}`);

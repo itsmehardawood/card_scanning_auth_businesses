@@ -79,7 +79,7 @@ const CardDetectionApp = ({ params }) => {
   useEffect(() => {
     const fetchMerchantInfo = async () => {
       // Use scanId from URL, fallback to manual scanId if not available
-      const currentScanId = urlParams.scanId || "f55f6daa-846f-44d3-bffd-1b6bd7a474ee";
+      const currentScanId = urlParams.scanId;
 
       if (!currentScanId) {
         setMerchantInfo({
@@ -532,9 +532,8 @@ const CardDetectionApp = ({ params }) => {
           setIsProcessing(false);
           setDetectionActive(false); // MAKE SURE THIS EXISTS
 
-          console.log("✅ Validation passed! Resetting attempt count.");
-          // FIXED: Reset attempts only on successful validation
-          setAttemptCount(0);
+          console.log("✅ Validation passed! NOT resetting attempt count - keeping session tracking.");
+          // Don't reset attempt count on validation success - keep tracking for entire session
           setMaxAttemptsReached(false);
           setCurrentOperation("");
 
@@ -576,10 +575,9 @@ const CardDetectionApp = ({ params }) => {
           setDetectionActive(false); // MAKE SURE THIS EXISTS
 
           console.log(
-            "✅ Legacy validation complete! Resetting attempt count."
+            "✅ Legacy validation complete! NOT resetting attempt count - keeping session tracking."
           );
-          // FIXED: Reset attempts only on successful validation
-          setAttemptCount(0);
+          // Don't reset attempt count on validation success - keep tracking for entire session
           setMaxAttemptsReached(false);
           setCurrentOperation("");
 
@@ -679,9 +677,8 @@ const CardDetectionApp = ({ params }) => {
           clearAllTimeouts(); // Clear any remaining detection timeouts
           setDetectionActive(false);
 
-          console.log("✅ Front scan successful! Resetting attempt count.");
-          // FIXED: Reset attempts only on successful front scan
-          setAttemptCount(0);
+          console.log("✅ Front scan successful! NOT resetting attempt count - keeping session tracking.");
+          // Don't reset attempt count on front scan success - keep tracking for entire session
           setMaxAttemptsReached(false);
           setCurrentOperation("");
           setNeedsRestartFromFront(false); // Clear restart flag on success
@@ -777,6 +774,8 @@ const CardDetectionApp = ({ params }) => {
             setCurrentPhase("results");
           }
 
+          // Only reset attempt count on completely successful scan completion
+          console.log("✅ Back scan successful - scan completed! Resetting attempt count.");
           setAttemptCount(0);
           setMaxAttemptsReached(false);
           setCurrentOperation("");
@@ -921,11 +920,9 @@ const CardDetectionApp = ({ params }) => {
     setNeedsRestartFromFront(false); // Clear the restart flag
 
     if (shouldRestartFromFront) {
-      // Generate new session ID for restart from front scan
-      const newSessionId = `session_${Date.now()}`;
-      setSessionId(newSessionId);
-      currentSessionIdRef.current = newSessionId;
-      console.log("🆔 New session ID created for restart:", newSessionId);
+      // Keep the same session ID for restart from front scan
+      // This ensures we can track try again limit properly
+      console.log("🆔 Keeping existing session ID for restart:", sessionId || currentSessionIdRef.current);
       
       // Restart from front scan
       console.log("🔄 Restarting from front scan due to retry status");

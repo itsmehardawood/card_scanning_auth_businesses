@@ -20,6 +20,10 @@ const CameraView = ({
 }) => {
   const [showMotionPrompt, setShowMotionPrompt] = useState(false);
   const [motionPromptShown, setMotionPromptShown] = useState(false);
+  const [showGuidelinesPrompt, setShowGuidelinesPrompt] = useState(false);
+  const [guidelinesPromptShown, setGuidelinesPromptShown] = useState(false);
+
+  // Debug log to see current phase
 
   // Handle motion prompt display with 3-second timer - show only once
   useEffect(() => {
@@ -40,6 +44,26 @@ const CameraView = ({
     }
   }, [currentPhase, frontScanState?.showMotionPrompt, motionPromptShown]);
 
+  // Handle guidelines prompt display during ready-for-front phase - show until countdown starts
+  useEffect(() => {
+    // Show guidelines for initial states or ready-for-front phase
+    if (
+      (currentPhase === "ready-for-front" || !currentPhase || currentPhase === "idle") &&
+      countdown === 0
+    ) {
+      // console.log("🎯 Showing guidelines prompt for phase:", currentPhase);
+      setShowGuidelinesPrompt(true);
+      // Don't set guidelinesPromptShown to true here - let it show each time we return to ready-for-front
+    }
+    
+    // Hide guidelines prompt when countdown starts (front-countdown phase)
+    if (currentPhase === "front-countdown" || countdown > 0) {
+      console.log("🎯 Hiding guidelines prompt - countdown started");
+      setShowGuidelinesPrompt(false);
+      setGuidelinesPromptShown(true); // Only mark as shown when we actually start scanning
+    }
+  }, [currentPhase, countdown]);
+  
   // Immediately hide motion prompt when motion progress reaches 2/2
   useEffect(() => {
     if (frontScanState?.hideMotionPrompt) {
@@ -54,6 +78,11 @@ const CameraView = ({
       setMotionPromptShown(false);
       setShowMotionPrompt(false);
     }
+    
+    // Only hide guidelines prompt when moving to actual scanning phases
+    if (currentPhase === "front" || currentPhase === "back" || currentPhase === "results" || currentPhase === "error") {
+      setShowGuidelinesPrompt(false);
+    }
   }, [currentPhase]);
 
   // Reset motion prompt when frames are reset (new scan session)
@@ -61,12 +90,15 @@ const CameraView = ({
     if (frontScanState?.framesBuffered === 0) {
       setMotionPromptShown(false);
       setShowMotionPrompt(false);
+      // Don't reset guidelines prompt here - let the phase-based logic handle it
+      // setGuidelinesPromptShown(false);
+      // setShowGuidelinesPrompt(false);
     }
   }, [frontScanState?.framesBuffered]);
   const getPhaseInstructions = () => {
     switch (currentPhase) {
       case "ready-for-front":
-        return 'Position the FRONT side of your card (with chip visible) and click "Start Card Scan"';
+        return 'Carefully read our guidelines or recommendation information for better scanning.';
       case "front-countdown":
         return `Get ready to scan front side... ${countdown}`;
       case "front":
@@ -321,7 +353,7 @@ const CameraView = ({
               </div>
 
               {/* Message */}
-              <div className="text-gray-100 text-sm leading-relaxed mb-4">
+              <div className="text-gray-100 text-sm leading-relaxed mb-2">
                 Please move your card slightly for optimal scanning detection
               </div>
 
@@ -342,6 +374,26 @@ const CameraView = ({
                   Adjusting position...
                 </span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Guidelines Prompt - Show during ready-for-front phase until countdown starts */}
+        {/* {console.log("🔍 JSX Guidelines check:", { showGuidelinesPrompt, currentPhase, countdown })} */}
+        {showGuidelinesPrompt && (
+          <div className="absolute inset-0 flex items-center justify-center z-40">
+            <div className="bg-black/90 backdrop-blur-sm rounded-lg p-4 mx-4 max-w-md text-center shadow-lg border-2 border-blue-500">
+              {/* Title */}
+              <div className="text-blue-600 text-lg font-semibold mb-2">
+                Guidelines for better scanning
+              </div>
+
+              {/* Message */}
+              <div className="text-gray-100 text-sm leading-relaxed mb-2">
+                We recommend putting the card on a flat surface, avoiding dark places, and positioning your card in the camera view for better scanning
+              </div>
+
+        
             </div>
           </div>
         )}
