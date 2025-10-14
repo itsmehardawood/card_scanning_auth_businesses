@@ -18,7 +18,7 @@ const HomePage = () => {
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <h3 className="font-semibold text-gray-700 mb-2">Example:</h3>
           <code className="text-sm text-gray-600 break-all">
-            /XYZ/3709d4b8-3ce1-41dd-a001-9014147bee8b
+            /XYZ/eba42365
           </code>
         </div>
         <p className="text-sm text-gray-500 mt-4">

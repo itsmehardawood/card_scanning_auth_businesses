@@ -1026,7 +1026,7 @@ const CardDetectionApp = ({ params }) => {
           <p className="mb-4">The scan ID in the URL is not valid. Please check the URL and try again.</p>
           <p className="text-sm">
             <strong>Expected format:</strong><br/>
-            /businessname/12345678-1234-1234-1234-123456789abc
+            /businessname/scanid
           </p>
           <p className="text-sm mt-2">
             <strong>Current URL parameters:</strong><br/>

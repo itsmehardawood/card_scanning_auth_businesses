@@ -32,13 +32,15 @@ export const getUrlParameters = () => {
 };
 
 /**
- * Validate if a string looks like a valid UUID (scan ID)
+ * Validate if a string is a valid scan ID (accepts any format)
  * @param {string} id - The ID to validate
- * @returns {boolean} - True if valid UUID format
+ * @returns {boolean} - True if valid scan ID format
  */
 export const isValidScanId = (id) => {
   if (!id || typeof id !== 'string') return false;
   
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
+  // Accept any non-empty string with alphanumeric characters, hyphens, and underscores
+  // Minimum length of 3 characters to ensure it's not just empty or whitespace
+  const scanIdRegex = /^[a-zA-Z0-9_-]{3,}$/;
+  return scanIdRegex.test(id.trim());
 };
