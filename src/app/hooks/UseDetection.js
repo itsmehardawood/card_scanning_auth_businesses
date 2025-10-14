@@ -400,7 +400,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
         } else {
           reject(new Error("Timeout: No successful API responses received"));
         }
-      }, 40000); // 15 second timeout
+      }, 50000); // 15 second timeout
       
       // Store timeout ID in ref for cleanup
       currentTimeoutRef.current = timeoutId;
@@ -794,7 +794,7 @@ const captureAndSendFramesFront = async (phase, passedSessionId) => {
         } else {
           reject(new Error("Timeout: No successful API responses received"));
         }
-      }, 40000); // 20 second timeout
+      }, 50000); // 20 second timeout
     });
   };
 
