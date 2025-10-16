@@ -255,35 +255,9 @@ if (currentPhase === "results") {
       </div>
 
       {/* Alternative Payment Methods */}
-      {currentPhase === "ready-for-front" && isLastAttempt && (
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800 mb-3 font-medium text-center">
-            Or try payment with:
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-            {/* Google Pay */}
-            <div className="flex items-center bg-white rounded-lg p-3 shadow border w-full sm:w-auto">
-              <svg width="32" height="18" viewBox="0 0 48 20" fill="none">
-                <path d="M19.7 10c0-2.8-2.2-5-5-5..." fill="#4285F4" />
-              </svg>
-              <span className="ml-2 text-sm font-medium text-gray-700">
-                Google Pay
-              </span>
-            </div>
+     
 
-            {/* Apple Pay */}
-            <div className="flex items-center bg-white rounded-lg p-3 shadow border w-full sm:w-auto">
-              <svg width="32" height="18" viewBox="0 0 48 20" fill="none">
-                <path d="M11.5 1c-1.1 0..." fill="#000" />
-              </svg>
-              <span className="ml-2 text-sm font-medium text-gray-700">
-                Apple Pay
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
+   
       {/* Attempts Counter */}
       {attemptCount > 0 && !maxAttemptsReached && (
         <div className="mt-4 text-center">

@@ -12,7 +12,7 @@ import {
   captureFrame,
   cleanupCamera,
 } from "../../utils/CameraUtils";
-import { sendFrameToAPI } from "../../utils/apiService";
+import { sendFrameToAPI, reportFailure } from "../../utils/apiService";
 import { useDetection } from "../../hooks/UseDetection";
 import { isValidScanId } from "../../utils/urlUtils";
 
@@ -283,7 +283,7 @@ const CardDetectionApp = ({ params }) => {
   );
 
   // FIXED: Helper function to handle detection failures with attempt tracking
-  const handleDetectionFailure = (message, operation) => {
+  const handleDetectionFailure = async (message, operation) => {
     console.log(`🚨 Detection failure: ${message} for operation: ${operation}`);
 
     clearDetectionTimeout();
@@ -321,6 +321,23 @@ const CardDetectionApp = ({ params }) => {
     // FIXED: Check max attempts correctly
     if (newAttemptCount >= MAX_ATTEMPTS) {
       console.log("🚫 Maximum attempts reached!");
+      
+      // Report failure to backend when max attempts reached
+      if (urlParams.scanId) {
+        const failureStage = operation === "validation" ? "front" : operation; // Map validation to front stage
+        const failureReason = `Maximum attempts reached (${MAX_ATTEMPTS}). Last error: ${message}`;
+        
+        try {
+          await reportFailure(urlParams.scanId, failureStage, failureReason);
+          console.log("✅ Failure reported to backend successfully");
+        } catch (error) {
+          console.error("❌ Failed to report failure to backend:", error);
+          // Continue with UI update even if reporting fails
+        }
+      } else {
+        console.warn("⚠️ No scanId available for failure reporting");
+      }
+      
       setMaxAttemptsReached(true);
       setErrorMessage(
         `Maximum attempts reached (${MAX_ATTEMPTS}). Please contact support for assistance.`
